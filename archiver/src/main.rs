@@ -22,6 +22,14 @@ fn main() {
         .about(crate_description!())
         .version(solana_clap_utils::version!())
         .arg(
+            Arg::with_name("node_keypair")
+                .long("node-keypair")
+                .value_name("PATH")
+                .takes_value(true)
+                .validator(is_keypair)
+                .help("File containing the node (machine) keypair for the validator"),
+        )
+        .arg(
             Arg::with_name("identity_keypair")
                 .short("i")
                 .long("identity-keypair")
@@ -77,6 +85,14 @@ fn main() {
 
     let ledger_path = PathBuf::from(matches.value_of("ledger").unwrap());
 
+    let node_keypair = Arc::new(
+        keypair_input(&matches, "node-keypair")
+            .unwrap_or_else(|err| {
+                eprintln!("Node keypair input failed: {}", err);
+                exit(1);
+            })
+            .keypair,
+    );
     let identity_keypair = keypair_input(&matches, "identity_keypair")
         .unwrap_or_else(|err| {
             eprintln!("Identity keypair input failed: {}", err);
@@ -113,6 +129,7 @@ fn main() {
         addr
     };
     let node = Node::new_archiver_with_external_ip(
+        &node_keypair.pubkey(),
         &identity_keypair.pubkey(),
         &gossip_addr,
         VALIDATOR_PORT_RANGE,

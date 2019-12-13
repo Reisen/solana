@@ -1071,6 +1071,7 @@ pub mod tests {
             blocktree.clone(),
         );
 
+        let leader_node_pubkey = Pubkey::new_rand();
         let leader_pubkey = *bank.collector_id();
         let exit = Arc::new(AtomicBool::new(false));
         let validator_exit = create_validator_exit(&exit);
@@ -1098,6 +1099,7 @@ pub mod tests {
             .write()
             .unwrap()
             .insert_info(ContactInfo::new_with_pubkey_socketaddr(
+                &leader_node_pubkey,
                 &leader_pubkey,
                 &socketaddr!("127.0.0.1:1234"),
             ));

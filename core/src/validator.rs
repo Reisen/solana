@@ -543,7 +543,8 @@ pub fn new_validator_for_tests() -> (Validator, ContactInfo, Keypair, PathBuf) {
     use crate::genesis_utils::{create_genesis_config_with_leader, GenesisConfigInfo};
 
     let node_keypair = Arc::new(Keypair::new());
-    let node = Node::new_localhost_with_pubkey(&node_keypair.pubkey());
+    let validator_keypair = Arc::new(Keypair::new());
+    let node = Node::new_localhost_with_pubkey(&node_keypair.pubkey(), &validator_keypair.pubkey());
     let contact_info = node.info.clone();
 
     let GenesisConfigInfo {
@@ -566,7 +567,7 @@ pub fn new_validator_for_tests() -> (Validator, ContactInfo, Keypair, PathBuf) {
     config.transaction_status_service_disabled = true;
     let node = Validator::new(
         node,
-        &node_keypair,
+        &validator_keypair,
         &ledger_path,
         &leader_voting_keypair.pubkey(),
         &leader_voting_keypair,
@@ -588,11 +589,19 @@ mod tests {
     #[test]
     fn validator_exit() {
         solana_logger::setup();
+        let leader_node_keypair = Keypair::new();
         let leader_keypair = Keypair::new();
-        let leader_node = Node::new_localhost_with_pubkey(&leader_keypair.pubkey());
+        let leader_node = Node::new_localhost_with_pubkey(
+            &leader_node_keypair.pubkey(),
+            &leader_keypair.pubkey(),
+        );
 
+        let validator_node_keypair = Keypair::new();
         let validator_keypair = Keypair::new();
-        let validator_node = Node::new_localhost_with_pubkey(&validator_keypair.pubkey());
+        let validator_node = Node::new_localhost_with_pubkey(
+            &validator_node_keypair.pubkey(),
+            &validator_keypair.pubkey(),
+        );
         let genesis_config =
             create_genesis_config_with_leader(10_000, &leader_keypair.pubkey(), 1000)
                 .genesis_config;
@@ -619,14 +628,20 @@ mod tests {
 
     #[test]
     fn validator_parallel_exit() {
+        let node_keypair = Keypair::new();
         let leader_keypair = Keypair::new();
-        let leader_node = Node::new_localhost_with_pubkey(&leader_keypair.pubkey());
+        let leader_node =
+            Node::new_localhost_with_pubkey(&node_keypair.pubkey(), &leader_keypair.pubkey());
 
         let mut ledger_paths = vec![];
         let mut validators: Vec<Validator> = (0..2)
             .map(|_| {
+                let node_keypair = Keypair::new();
                 let validator_keypair = Keypair::new();
-                let validator_node = Node::new_localhost_with_pubkey(&validator_keypair.pubkey());
+                let validator_node = Node::new_localhost_with_pubkey(
+                    &node_keypair.pubkey(),
+                    &validator_keypair.pubkey(),
+                );
                 let genesis_config =
                     create_genesis_config_with_leader(10_000, &leader_keypair.pubkey(), 1000)
                         .genesis_config;

@@ -342,6 +342,14 @@ pub fn main() {
                 .help(SKIP_SEED_PHRASE_VALIDATION_ARG.help),
         )
         .arg(
+            Arg::with_name("node_keypair")
+                .long("node-keypair")
+                .value_name("PATH")
+                .takes_value(true)
+                .validator(is_keypair)
+                .help("File containing the node (machine) keypair for the validator"),
+        )
+        .arg(
             Arg::with_name("identity_keypair")
                 .short("i")
                 .long("identity-keypair")
@@ -539,6 +547,14 @@ pub fn main() {
         )
         .get_matches();
 
+    let node_keypair = Arc::new(
+        keypair_input(&matches, "node-keypair")
+            .unwrap_or_else(|err| {
+                eprintln!("Node keypair input failed: {}", err);
+                exit(1);
+            })
+            .keypair,
+    );
     let identity_keypair = Arc::new(
         keypair_input(&matches, "identity-keypair")
             .unwrap_or_else(|err| {
@@ -660,7 +676,8 @@ pub fn main() {
         #[cfg(unix)]
         {
             let default_logfile = format!(
-                "solana-validator-{}-{}.log",
+                "solana-validator-{}-{}-{}.log",
+                node_keypair.pubkey(),
                 identity_keypair.pubkey(),
                 chrono::Utc::now().format("%Y%m%d-%H%M%S")
             );
@@ -751,8 +768,13 @@ pub fn main() {
         .map(ContactInfo::new_gossip_entry_point);
 
     let mut tcp_ports = vec![];
-    let mut node =
-        Node::new_with_external_ip(&identity_keypair.pubkey(), &gossip_addr, dynamic_port_range);
+    let mut node = Node::new_with_external_ip(
+        &node_keypair.pubkey(),
+        &identity_keypair.pubkey(),
+        &gossip_addr,
+        dynamic_port_range,
+    );
+
     if let Ok(rpc_port) = rpc_port {
         let rpc_pubsub_port = rpc_port + 1;
         node.info.rpc = SocketAddr::new(node.info.gossip.ip(), rpc_port);

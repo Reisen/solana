@@ -145,7 +145,9 @@ impl LocalCluster {
 
         let leader_keypair = &validator_keys[0];
         let leader_pubkey = leader_keypair.pubkey();
-        let leader_node = Node::new_localhost_with_pubkey(&leader_pubkey);
+        let leader_node_keypair = Arc::new(Keypair::new());
+        let leader_node =
+            Node::new_localhost_with_pubkey(&leader_node_keypair.pubkey(), &leader_pubkey);
         let GenesisConfigInfo {
             mut genesis_config,
             mint_keypair,
@@ -223,6 +225,7 @@ impl LocalCluster {
         let mut validators = HashMap::new();
         error!("leader_pubkey: {}", leader_pubkey);
         let leader_info = ValidatorInfo {
+            node_keypair: leader_node_keypair,
             keypair: leader_keypair.clone(),
             voting_keypair: leader_voting_keypair,
             storage_keypair: leader_storage_keypair,
@@ -252,7 +255,12 @@ impl LocalCluster {
             config.validator_configs[1..].iter(),
             validator_keys[1..].iter(),
         ) {
-            cluster.add_validator(validator_config, *stake, key.clone());
+            cluster.add_validator(
+                validator_config,
+                *stake,
+                Arc::new(Keypair::new()),
+                key.clone(),
+            );
         }
 
         let listener_config = ValidatorConfig {
@@ -260,7 +268,12 @@ impl LocalCluster {
             ..config.validator_configs[0].clone()
         };
         (0..config.num_listeners).for_each(|_| {
-            cluster.add_validator(&listener_config, 0, Arc::new(Keypair::new()));
+            cluster.add_validator(
+                &listener_config,
+                0,
+                Arc::new(Keypair::new()),
+                Arc::new(Keypair::new()),
+            );
         });
 
         discover_cluster(
@@ -307,6 +320,7 @@ impl LocalCluster {
         &mut self,
         validator_config: &ValidatorConfig,
         stake: u64,
+        node_keypair: Arc<Keypair>,
         validator_keypair: Arc<Keypair>,
     ) -> Pubkey {
         let client = create_client(
@@ -318,7 +332,8 @@ impl LocalCluster {
         let voting_keypair = Keypair::new();
         let storage_keypair = Arc::new(Keypair::new());
         let validator_pubkey = validator_keypair.pubkey();
-        let validator_node = Node::new_localhost_with_pubkey(&validator_keypair.pubkey());
+        let validator_node =
+            Node::new_localhost_with_pubkey(&node_keypair.pubkey(), &validator_keypair.pubkey());
         let contact_info = validator_node.info.clone();
         let (ledger_path, _blockhash) = create_new_tmp_ledger!(&self.genesis_config);
 
@@ -373,6 +388,7 @@ impl LocalCluster {
                 storage_keypair,
                 ledger_path,
                 contact_info,
+                node_keypair,
             },
             validator_config.clone(),
             validator_server,
@@ -383,8 +399,10 @@ impl LocalCluster {
     }
 
     fn add_archiver(&mut self) {
+        let archiver_node = Arc::new(Keypair::new());
         let archiver_keypair = Arc::new(Keypair::new());
         let archiver_pubkey = archiver_keypair.pubkey();
+        let storage_node = Arc::new(Keypair::new());
         let storage_keypair = Arc::new(Keypair::new());
         let storage_pubkey = storage_keypair.pubkey();
         let client = create_client(
@@ -399,7 +417,7 @@ impl LocalCluster {
             &archiver_keypair.pubkey(),
             42,
         );
-        let archiver_node = Node::new_localhost_archiver(&archiver_pubkey);
+        let archiver_node = Node::new_localhost_archiver(&archiver_node.pubkey(), &archiver_pubkey);
 
         Self::setup_storage_account(&client, &storage_keypair, &archiver_keypair, true).unwrap();
 
@@ -630,8 +648,11 @@ impl LocalCluster {
 }
 
 impl Cluster for LocalCluster {
-    fn get_node_pubkeys(&self) -> Vec<Pubkey> {
-        self.validators.keys().cloned().collect()
+    fn get_node_pubkeys(&self) -> Vec<(Pubkey, Pubkey)> {
+        self.validators
+            .iter()
+            .map(|(k, v)| (v.info.node_keypair.pubkey(), *k))
+            .collect()
     }
 
     fn get_validator_client(&self, pubkey: &Pubkey) -> Option<ThinClient> {
@@ -653,9 +674,14 @@ impl Cluster for LocalCluster {
         node
     }
 
-    fn restart_node(&mut self, pubkey: &Pubkey, mut cluster_validator_info: ClusterValidatorInfo) {
+    fn restart_node(
+        &mut self,
+        node_pubkey: &Pubkey,
+        pubkey: &Pubkey,
+        mut cluster_validator_info: ClusterValidatorInfo,
+    ) {
         // Update the stored ContactInfo for this node
-        let node = Node::new_localhost_with_pubkey(&pubkey);
+        let node = Node::new_localhost_with_pubkey(node_pubkey, pubkey);
         cluster_validator_info.info.contact_info = node.info.clone();
         cluster_validator_info
             .config
@@ -689,10 +715,15 @@ impl Cluster for LocalCluster {
         self.validators.insert(*pubkey, cluster_validator_info);
     }
 
-    fn exit_restart_node(&mut self, pubkey: &Pubkey, validator_config: ValidatorConfig) {
+    fn exit_restart_node(
+        &mut self,
+        node_pubkey: &Pubkey,
+        pubkey: &Pubkey,
+        validator_config: ValidatorConfig,
+    ) {
         let mut cluster_validator_info = self.exit_node(pubkey);
         cluster_validator_info.config = validator_config;
-        self.restart_node(pubkey, cluster_validator_info);
+        self.restart_node(node_pubkey, pubkey, cluster_validator_info);
     }
 }
 

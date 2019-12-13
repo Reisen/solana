@@ -326,9 +326,11 @@ mod test {
         let blocktree = Arc::new(
             Blocktree::open(&ledger_path).expect("Expected to be able to open database ledger"),
         );
+        let leader_node_keypair = Arc::new(Keypair::new());
+        let leader_node_pubkey = leader_node_keypair.pubkey();
         let leader_keypair = Arc::new(Keypair::new());
         let leader_pubkey = leader_keypair.pubkey();
-        let leader_info = Node::new_localhost_with_pubkey(&leader_pubkey);
+        let leader_info = Node::new_localhost_with_pubkey(&leader_node_pubkey, &leader_pubkey);
         let cluster_info = Arc::new(RwLock::new(ClusterInfo::new_with_invalid_keypair(
             leader_info.info.clone(),
         )));

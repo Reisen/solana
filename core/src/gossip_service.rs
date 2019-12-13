@@ -273,13 +273,14 @@ fn make_gossip_node(
     exit: &Arc<AtomicBool>,
     gossip_addr: Option<&SocketAddr>,
 ) -> (GossipService, Option<TcpListener>, Arc<RwLock<ClusterInfo>>) {
-    let keypair = Arc::new(Keypair::new());
+    let node_keypair = Arc::new(Keypair::new());
+    let id_keypair = Arc::new(Keypair::new());
     let (node, gossip_socket, ip_echo) = if let Some(gossip_addr) = gossip_addr {
-        ClusterInfo::gossip_node(&keypair.pubkey(), gossip_addr)
+        ClusterInfo::gossip_node(&node_keypair.pubkey(), &id_keypair.pubkey(), gossip_addr)
     } else {
-        ClusterInfo::spy_node(&keypair.pubkey())
+        ClusterInfo::spy_node(&node_keypair.pubkey(), &id_keypair.pubkey())
     };
-    let mut cluster_info = ClusterInfo::new(node, keypair);
+    let mut cluster_info = ClusterInfo::new(node, id_keypair);
     if let Some(entrypoint) = entrypoint {
         cluster_info.set_entrypoint(ContactInfo::new_gossip_entry_point(entrypoint));
     }
@@ -312,11 +313,14 @@ mod tests {
     #[test]
     fn test_gossip_services_spy() {
         let keypair = Keypair::new();
+        let node_keypair = Keypair::new();
         let peer0 = Pubkey::new_rand();
+        let node_peer0 = Pubkey::new_rand();
         let peer1 = Pubkey::new_rand();
-        let contact_info = ContactInfo::new_localhost(&keypair.pubkey(), 0);
-        let peer0_info = ContactInfo::new_localhost(&peer0, 0);
-        let peer1_info = ContactInfo::new_localhost(&peer1, 0);
+        let node_peer1 = Pubkey::new_rand();
+        let contact_info = ContactInfo::new_localhost(&node_keypair.pubkey(), &keypair.pubkey(), 0);
+        let peer0_info = ContactInfo::new_localhost(&node_peer0, &peer0, 0);
+        let peer1_info = ContactInfo::new_localhost(&node_peer1, &peer1, 0);
         let mut cluster_info = ClusterInfo::new(contact_info.clone(), Arc::new(keypair));
         cluster_info.insert_info(peer0_info.clone());
         cluster_info.insert_info(peer1_info);

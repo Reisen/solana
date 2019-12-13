@@ -71,7 +71,7 @@ fn run_simulation(stakes: &[u64], fanout: usize) {
     let timeout = 60 * 5;
 
     // describe the leader
-    let leader_info = ContactInfo::new_localhost(&Pubkey::new_rand(), 0);
+    let leader_info = ContactInfo::new_localhost(&Pubkey::new_rand(), &Pubkey::new_rand(), 0);
     let mut cluster_info = ClusterInfo::new_with_invalid_keypair(leader_info.clone());
 
     // setup staked nodes
@@ -94,7 +94,7 @@ fn run_simulation(stakes: &[u64], fanout: usize) {
         chunk.into_iter().for_each(|i| {
             //distribute neighbors across threads to maximize parallel compute
             let batch_ix = *i as usize % batches.len();
-            let node = ContactInfo::new_localhost(&Pubkey::new_rand(), 0);
+            let node = ContactInfo::new_localhost(&Pubkey::new_rand(), &Pubkey::new_rand(), 0);
             staked_nodes.insert(node.id, stakes[*i - 1]);
             cluster_info.insert_info(node.clone());
             let (s, r) = channel();

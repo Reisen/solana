@@ -299,7 +299,7 @@ mod tests {
         let leader_schedule_cache = Arc::new(cached_leader_schedule);
         let bank_forks = Arc::new(RwLock::new(bank_forks));
 
-        let mut me = ContactInfo::new_localhost(&Pubkey::new_rand(), 0);
+        let mut me = ContactInfo::new_localhost(&Pubkey::new_rand(), &Pubkey::new_rand(), 0);
         let port = find_available_port_in_range((8000, 10000)).unwrap();
         let me_retransmit = UdpSocket::bind(format!("127.0.0.1:{}", port)).unwrap();
         // need to make sure tvu and tpu are valid addresses
@@ -310,7 +310,7 @@ mod tests {
             .local_addr()
             .unwrap();
 
-        let other = ContactInfo::new_localhost(&Pubkey::new_rand(), 0);
+        let other = ContactInfo::new_localhost(&Pubkey::new_rand(), &Pubkey::new_rand(), 0);
         let mut cluster_info = ClusterInfo::new_with_invalid_keypair(other);
         cluster_info.insert_info(me);
 

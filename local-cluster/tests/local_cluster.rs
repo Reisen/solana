@@ -515,7 +515,7 @@ fn test_restart_node() {
         clock::DEFAULT_TICKS_PER_SLOT,
         slots_per_epoch,
     );
-    cluster.exit_restart_node(&nodes[0], validator_config);
+    cluster.exit_restart_node(&nodes[0].0, &nodes[0].1, validator_config);
     cluster_tests::sleep_n_epochs(
         0.5,
         &cluster.genesis_config.poh_config,
@@ -636,9 +636,9 @@ fn test_snapshot_restart_tower() {
     let all_pubkeys = cluster.get_node_pubkeys();
     let validator_id = all_pubkeys
         .into_iter()
-        .find(|x| *x != cluster.entry_point_info.id)
+        .find(|(_, id)| *id != cluster.entry_point_info.id)
         .unwrap();
-    let validator_info = cluster.exit_node(&validator_id);
+    let validator_info = cluster.exit_node(&validator_id.1);
 
     // Get slot after which this was generated
     let snapshot_package_output_path = &leader_snapshot_test_config
@@ -657,7 +657,7 @@ fn test_snapshot_restart_tower() {
 
     // Restart validator from snapshot, the validator's tower state in this snapshot
     // will contain slots < the root bank of the snapshot. Validator should not panic.
-    cluster.restart_node(&validator_id, validator_info);
+    cluster.restart_node(&validator_id.0, &validator_id.1, validator_info);
 
     // Test cluster can still make progress and get confirmations in tower
     cluster_tests::spend_and_verify_all_nodes(
@@ -719,13 +719,16 @@ fn test_snapshots_blocktree_floor() {
         &validator_snapshot_test_config.validator_config,
         validator_stake,
         Arc::new(Keypair::new()),
+        Arc::new(Keypair::new()),
     );
     let all_pubkeys = cluster.get_node_pubkeys();
     let validator_id = all_pubkeys
         .into_iter()
-        .find(|x| *x != cluster.entry_point_info.id)
+        .find(|(node_id, id)| {
+            *id != cluster.entry_point_info.id && *node_id != cluster.entry_point_info.node_id
+        })
         .unwrap();
-    let validator_client = cluster.get_validator_client(&validator_id).unwrap();
+    let validator_client = cluster.get_validator_client(&validator_id.1).unwrap();
     let mut current_slot = 0;
 
     // Let this validator run a while with repair
@@ -742,7 +745,7 @@ fn test_snapshots_blocktree_floor() {
 
     // Check the validator ledger doesn't contain any slots < slot_floor
     cluster.close_preserve_ledgers();
-    let validator_ledger_path = &cluster.validators[&validator_id];
+    let validator_ledger_path = &cluster.validators[&validator_id.1];
     let blocktree = Blocktree::open(&validator_ledger_path.info.ledger_path).unwrap();
 
     // Skip the zeroth slot in blocktree that the ledger is initialized with
@@ -812,7 +815,11 @@ fn test_snapshots_restart_validity() {
         // Restart node
         trace!("Restarting cluster from snapshot");
         let nodes = cluster.get_node_pubkeys();
-        cluster.exit_restart_node(&nodes[0], snapshot_test_config.validator_config.clone());
+        cluster.exit_restart_node(
+            &nodes[0].0,
+            &nodes[0].1,
+            snapshot_test_config.validator_config.clone(),
+        );
 
         // Verify account balances on validator
         trace!("Verifying balances");
@@ -1006,10 +1013,15 @@ fn run_repairman_catchup(num_repairmen: u64) {
     // Start up a new node, wait for catchup. Backwards repair won't be sufficient because the
     // leader is sending shreds past this validator's first two confirmed epochs. Thus, the repairman
     // protocol will have to kick in for this validator to repair.
-    cluster.add_validator(&validator_config, repairee_stake, Arc::new(Keypair::new()));
+    cluster.add_validator(
+        &validator_config,
+        repairee_stake,
+        Arc::new(Keypair::new()),
+        Arc::new(Keypair::new()),
+    );
 
     let all_pubkeys = cluster.get_node_pubkeys();
-    let repairee_id = all_pubkeys
+    let (_, repairee_id) = all_pubkeys
         .into_iter()
         .find(|x| !repairman_pubkeys.contains(x))
         .unwrap();

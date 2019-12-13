@@ -17,7 +17,8 @@ use std::time::Duration;
 
 fn test_node(exit: &Arc<AtomicBool>) -> (Arc<RwLock<ClusterInfo>>, GossipService, UdpSocket) {
     let keypair = Arc::new(Keypair::new());
-    let mut test_node = Node::new_localhost_with_pubkey(&keypair.pubkey());
+    let node_keypair = Arc::new(Keypair::new());
+    let mut test_node = Node::new_localhost_with_pubkey(&node_keypair.pubkey(), &keypair.pubkey());
     let cluster_info = Arc::new(RwLock::new(ClusterInfo::new(
         test_node.info.clone(),
         keypair,

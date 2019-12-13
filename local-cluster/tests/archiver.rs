@@ -92,11 +92,15 @@ fn test_archiver_startup_leader_hang() {
     let (archiver_ledger_path, _blockhash) = create_new_tmp_ledger!(&genesis_config);
 
     {
+        let archiver_node_keypair = Arc::new(Keypair::new());
         let archiver_keypair = Arc::new(Keypair::new());
         let storage_keypair = Arc::new(Keypair::new());
 
         info!("starting archiver node");
-        let archiver_node = Node::new_localhost_with_pubkey(&archiver_keypair.pubkey());
+        let archiver_node = Node::new_localhost_with_pubkey(
+            &archiver_node_keypair.pubkey(),
+            &archiver_keypair.pubkey(),
+        );
 
         let fake_gossip = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
         let leader_info = ContactInfo::new_gossip_entry_point(&fake_gossip);
@@ -129,9 +133,11 @@ fn test_archiver_startup_ledger_hang() {
     let cluster = LocalCluster::new_with_equal_stakes(2, 10_000, 100);
 
     info!("starting archiver node");
+    let bad_node_keys = Arc::new(Keypair::new());
     let bad_keys = Arc::new(Keypair::new());
     let storage_keypair = Arc::new(Keypair::new());
-    let mut archiver_node = Node::new_localhost_with_pubkey(&bad_keys.pubkey());
+    let mut archiver_node =
+        Node::new_localhost_with_pubkey(&bad_node_keys.pubkey(), &bad_keys.pubkey());
 
     // Pass bad TVU sockets to prevent successful ledger download
     archiver_node.sockets.tvu = vec![std::net::UdpSocket::bind("0.0.0.0:0").unwrap()];

@@ -209,6 +209,7 @@ mod test {
     }
 
     fn setup_dummy_broadcast_service(
+        leader_node_pubkey: &Pubkey,
         leader_pubkey: &Pubkey,
         ledger_path: &Path,
         entry_receiver: Receiver<WorkingBankEntry>,
@@ -217,11 +218,13 @@ mod test {
         let blocktree = Arc::new(Blocktree::open(ledger_path).unwrap());
 
         // Make the leader node and scheduler
-        let leader_info = Node::new_localhost_with_pubkey(leader_pubkey);
+        let leader_info = Node::new_localhost_with_pubkey(leader_node_pubkey, leader_pubkey);
 
         // Make a node to broadcast to
+        let buddy_node_keypair = Keypair::new();
         let buddy_keypair = Keypair::new();
-        let broadcast_buddy = Node::new_localhost_with_pubkey(&buddy_keypair.pubkey());
+        let broadcast_buddy =
+            Node::new_localhost_with_pubkey(&buddy_node_keypair.pubkey(), &buddy_keypair.pubkey());
 
         // Fill the cluster_info with the buddy's info
         let mut cluster_info = ClusterInfo::new_with_invalid_keypair(leader_info.info.clone());
@@ -258,10 +261,12 @@ mod test {
 
         {
             // Create the leader scheduler
+            let leader_node_keypair = Keypair::new();
             let leader_keypair = Keypair::new();
 
             let (entry_sender, entry_receiver) = channel();
             let broadcast_service = setup_dummy_broadcast_service(
+                &leader_node_keypair.pubkey(),
                 &leader_keypair.pubkey(),
                 &ledger_path,
                 entry_receiver,

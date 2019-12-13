@@ -291,9 +291,11 @@ mod test {
 
     #[test]
     fn test_signature() {
+        let node_keypair = Keypair::new();
         let keypair = Keypair::new();
         let wrong_keypair = Keypair::new();
         let mut v = CrdsValue::new_unsigned(CrdsData::ContactInfo(ContactInfo::new_localhost(
+            &node_keypair.pubkey(),
             &keypair.pubkey(),
             timestamp(),
         )));

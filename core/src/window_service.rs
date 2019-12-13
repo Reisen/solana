@@ -422,7 +422,7 @@ mod test {
         let blocktree = Arc::new(blocktree);
         let (retransmit_sender, _retransmit_receiver) = channel();
         let cluster_info = Arc::new(RwLock::new(ClusterInfo::new_with_invalid_keypair(
-            ContactInfo::new_localhost(&Pubkey::default(), 0),
+            ContactInfo::new_localhost(&Pubkey::default(), &Pubkey::default(), 0),
         )));
         let repair_sock = Arc::new(UdpSocket::bind(socketaddr_any!()).unwrap());
         let window = WindowService::new(

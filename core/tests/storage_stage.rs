@@ -29,6 +29,7 @@ mod tests {
     #[test]
     fn test_storage_stage_process_account_proofs() {
         solana_logger::setup();
+        let node_keypair = Arc::new(Keypair::new());
         let keypair = Arc::new(Keypair::new());
         let storage_keypair = Arc::new(Keypair::new());
         let archiver_keypair = Arc::new(Keypair::new());
@@ -52,7 +53,7 @@ mod tests {
             &[bank.clone()],
             vec![0],
         )));
-        let cluster_info = test_cluster_info(&keypair.pubkey());
+        let cluster_info = test_cluster_info(&node_keypair.pubkey(), &keypair.pubkey());
 
         let (bank_sender, bank_receiver) = channel();
         let storage_state = StorageState::new(
@@ -158,6 +159,7 @@ mod tests {
     fn test_storage_stage_process_banks() {
         solana_logger::setup();
         let keypair = Arc::new(Keypair::new());
+        let node_keypair = Arc::new(Keypair::new());
         let storage_keypair = Arc::new(Keypair::new());
         let exit = Arc::new(AtomicBool::new(false));
 
@@ -172,7 +174,7 @@ mod tests {
             vec![0],
         )));
 
-        let cluster_info = test_cluster_info(&keypair.pubkey());
+        let cluster_info = test_cluster_info(&node_keypair.pubkey(), &keypair.pubkey());
         let (bank_sender, bank_receiver) = channel();
         let storage_state = StorageState::new(
             &bank.last_blockhash(),

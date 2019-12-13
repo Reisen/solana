@@ -8,6 +8,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 pub struct ValidatorInfo {
+    pub node_keypair: Arc<Keypair>,
     pub keypair: Arc<Keypair>,
     pub voting_keypair: Arc<Keypair>,
     pub storage_keypair: Arc<Keypair>,
@@ -36,9 +37,14 @@ impl ClusterValidatorInfo {
 }
 
 pub trait Cluster {
-    fn get_node_pubkeys(&self) -> Vec<Pubkey>;
+    fn get_node_pubkeys(&self) -> Vec<(Pubkey, Pubkey)>;
     fn get_validator_client(&self, pubkey: &Pubkey) -> Option<ThinClient>;
     fn exit_node(&mut self, pubkey: &Pubkey) -> ClusterValidatorInfo;
-    fn restart_node(&mut self, pubkey: &Pubkey, cluster_validator_info: ClusterValidatorInfo);
-    fn exit_restart_node(&mut self, pubkey: &Pubkey, config: ValidatorConfig);
+    fn exit_restart_node(&mut self, node_pubkey: &Pubkey, pubkey: &Pubkey, config: ValidatorConfig);
+    fn restart_node(
+        &mut self,
+        node_pubkey: &Pubkey,
+        pubkey: &Pubkey,
+        cluster_validator_info: ClusterValidatorInfo,
+    );
 }
